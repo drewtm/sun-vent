@@ -314,28 +314,42 @@ with r12writer("arcs.dxf") as dxf:
 #this creates a preview of what the finished array should look like and its properties
 im = svgwrite.Drawing("cones.svg", size=((D_max+20)*mm, (r_max+hmax+20)*mm), debug=True)
 im.viewbox(-(D_max+20)*2.5, -(hmax+10)*5, (D_max+20)*5, (r_max+hmax+20)*5)
+#create a group for the top-vew
+vtop = im.add(im.g(id='vtop'))
 #draw the rings, with the black stroke representing the material thickness
 for ro, ri, h in zip(r_top, r_bot, H):
-	im.add(im.circle(center=(0,0),r=(ro+thk/2)*mm,fill='gray', stroke='black', stroke_width=thk*mm))
-	im.add(im.circle(center=(0,0),r=(ri*mm), fill='white'))
+	vtop.add(im.circle(center=(0,0),r=(ro+thk/2)*mm,fill='gray', stroke='black', stroke_width=thk*mm))
+	vtop.add(im.circle(center=(0,0),r=(ri*mm), fill='white'))
 #hide the upper half to draw the cross-section
-im.add(im.rect(insert=(-r_max*mm, -r_max*mm), size=(D_max*mm, r_max*mm), fill='white'))
+vtop.add(im.rect(insert=(-r_max*mm, -r_max*mm), size=(D_max*mm, r_max*mm), fill='white'))
 #draw a cross-section of the rings in the top half of the image
 for ro, ri, h, rf in zip(r_top, r_bot, H, r_out):
 	im.add(im.line(start=((ri+thk/2)*mm, 0), end=((ro+thk/2)*mm, -h*mm), stroke='black', stroke_width=thk*mm))
 	im.add(im.line(start=(-(ri+thk/2)*mm, 0), end=(-(ro+thk/2)*mm, -h*mm), stroke='black', stroke_width=thk*mm))
 	#include a shaded preview of the quality of the focal area
-	im.add(im.circle(center=(0, 0), r=rf*mm, fill='red', opacity=(1.0/len(H))))
+	vtop.add(im.circle(center=(0, 0), r=rf*mm, fill='red', opacity=(1.0/len(H))))
 #one more layer to represent the unfocused light
-im.add(im.circle(center=(0, 0), r=r_bot[-1]*mm, fill='red', opacity=(1.0/len(H))))
+vtop.add(im.circle(center=(0, 0), r=r_bot[-1]*mm, fill='red', opacity=(1.0/len(H))))
 #hide the top half of the shaded focus preview
-im.add(im.rect(insert=(-r_f_max*mm,-r_f_max*mm), size=(D_f_max*mm, r_f_max*mm), fill='white'))
+vtop.add(im.rect(insert=(-r_bot[-1]*mm,-r_bot[-1]*mm), size=(2*r_bot[-1]*mm, r_bot[-1]*mm), fill='white'))
 #draw a height graph of sorts showing how the light is distributed in the focal area
 for rf, hbar, tbar in zip(r_out, cumulative_area, area_in):
 	#the thickness of each of these bars corresponds to the area of the ring that added the light
 	im.add(im.line(start=(-rf*mm, (-hbar+area_in[0]/2)*hmax/a_captured*mm), end=(rf*mm, (-hbar+area_in[0]/2)*hmax/a_captured*mm), stroke='red', stroke_width=tbar*hmax/a_captured*mm))
+#move the top view away from the section view
+vtop.translate(0,hmax*0.1)
+#add a "section line"
+sectionline = im.add(im.line(start=(-r_max*1.1*mm, hmax*.05), end=(r_max*1.1*mm, hmax*.05), stroke_width=hmax*.05, stroke='black'))
+sectionline.dasharray([5, 5])
+#label the views
+im.add(im.text('TOP VIEW', (-r_max*1.1*mm, (r_max*.9+4)*mm), font_size=4*mm))
+im.add(im.text('black lines = material edge', (-r_max*1.1*mm, (r_max*.9+8)*mm), font_size=3*mm))
+im.add(im.text('shaded middle ~= light intensity', (-r_max*1.1*mm, (r_max*.9+12)*mm), font_size=3*mm))
+im.add(im.text('SECTION VIEW', (-r_max*1.1*mm, (-hmax-9)*mm), font_size=4*mm))
+im.add(im.text('line width = material thickness', (-r_max*1.1*mm, (-hmax-5)*mm), font_size=3*mm))
+im.add(im.text('bar graph ~= light intensity', (-r_max*1.1*mm, (-hmax-1)*mm), font_size=3*mm))
 #now add some useful statistics and performance numbers about the array
-im.add(im.text('{:d} rings'.format(len(H)), (0, -(hmax+13.5)*mm), font_size=3*mm, text_anchor='middle'))
-im.add(im.text('average focused brightness is {:.0f}x'.format(avg_flux_factor), (0, -(hmax+6.5)*mm), font_size=3*mm, text_anchor='middle'))
-im.add(im.text('{:.0f}% of light is captured'.format(area_efficiency*100), (0, -(hmax+10)*mm), font_size=3*mm, text_anchor='middle'))
+im.add(im.text('{:d} rings'.format(len(H)), (r_max*mm, (-hmax-9.5)*mm), font_size=3*mm, text_anchor='end'))
+im.add(im.text('average focused brightness is {:.0f}x'.format(avg_flux_factor), (r_max*mm, (-hmax-6)*mm), font_size=3*mm, text_anchor='end'))
+im.add(im.text('{:.0f}% of light is captured'.format(area_efficiency*100), (r_max*mm, (-hmax-2)*mm), font_size=3*mm, text_anchor='end'))
 im.save()
